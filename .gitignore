@@ -1,0 +1,25 @@
+# node modules
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# build outputs
+build/
+dist/
+server/server/uploads/
+client/build/
+client/dist/
+
+# environment variables and config
+.env
+
+# logs
+*.log
+
+# editor directories and files
+.vscode/
+.idea/
+.DS_Store
+
+# system
+Thumbs.db
