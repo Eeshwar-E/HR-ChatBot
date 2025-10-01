@@ -1,0 +1,8 @@
+## Project Dependencies
+
+- cors: 2.8.5
+- dotenv: 17.0.1
+- express: 5.1.0
+- pg: 8.16.3
+
+
