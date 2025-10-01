@@ -38,7 +38,7 @@ const handleChat = async (req, res) => {
     if (hasEval) {
       // Include evaluation and full transcript
       prompt =
-        `You are an AI HR assistant. Below is your previous evaluation of a candidate's resume:\n"${context.evaluation.trim()}"\n\n` +
+        `You are an AI assistant. Below is your previous evaluation of a candidate's resume:\n"${context.evaluation.trim()}"\n\n` +
         `Below is the conversation so far between the user and you:\n${transcript}\n\n` +
         `Now, respond helpfully to the user's latest message:\n"${trimmedMsg}"\n\n` +
         `Bot:`;
