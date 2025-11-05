@@ -1,4 +1,6 @@
-const { chatWithLLM } = require('./llmController');
+const { chatWithLLM, getLLMRawResponse } = require('./llmController');
+const Chat = require('../models/Chat');
+const Evaluation = require('../models/Evaluation');
 
 /**
  * Builds a formatted chat transcript from history array
@@ -29,16 +31,32 @@ const handleChat = async (req, res) => {
     }
 
     const trimmedMsg = message.trim();
-    const hasEval = context?.evaluation && context.evaluation.trim().length > 0;
-    const transcript = buildTranscript(context?.history || []);
+    
+    // If we have an evaluation ID in context, fetch it
+    let evaluation = null;
+    if (context?.evaluationId) {
+      evaluation = await Evaluation.findOne({ 
+        _id: context.evaluationId,
+        user: req.user._id 
+      });
+    }
+
+    // Get or create chat document for this user
+    const chatDoc = await Chat.findOne({ user: req.user._id }) || new Chat({ user: req.user._id });
+    
+    // Build transcript from stored messages
+    const transcript = buildTranscript(chatDoc.messages);
 
     // Construct prompt for LLM
     let prompt = '';
 
-    if (hasEval) {
+    if (evaluation) {
       // Include evaluation and full transcript
       prompt =
-        `You are an AI assistant. Below is your previous evaluation of a candidate's resume:\n"${context.evaluation.trim()}"\n\n` +
+        `You are an AI assistant. Below is your previous evaluation of a candidate's resume:\n"${evaluation.comments}"\n\n` +
+        `Strengths: ${evaluation.strengths.join(', ')}\n` +
+        `Weaknesses: ${evaluation.weaknesses.join(', ')}\n` +
+        `Score: ${evaluation.score}/10\n\n` +
         `Below is the conversation so far between the user and you:\n${transcript}\n\n` +
         `Now, respond helpfully to the user's latest message:\n"${trimmedMsg}"\n\n` +
         `Bot:`;
@@ -48,15 +66,68 @@ const handleChat = async (req, res) => {
         `${transcript}\n\nUser: ${trimmedMsg}\n\nBot:`;
     }
 
-    console.log("Prompt sent to LLM:\n", prompt);
+  // Only log when debugging enabled to avoid exposing sensitive data
+  if (process.env.LLM_DEBUG === 'true') {
+    console.log("Prompt sent to LLM (truncated):\n", prompt.slice(0, 500));
+  }
 
-    const reply = await chatWithLLM(prompt);
+  const provider = req.user?.modelPreference || process.env.LLM_PROVIDER || 'phi3';
+  // Get raw response so we can optionally return metadata when debugging
+  const llmResult = await getLLMRawResponse(prompt, provider);
+  const reply = llmResult?.text || '';
 
-    res.json({ reply });
+    // Add the new messages
+    chatDoc.messages.push(
+      { sender: 'user', text: trimmedMsg },
+      { sender: 'bot', text: reply }
+    );
+    
+    // Update the timestamp
+    chatDoc.updatedAt = new Date();
+    
+    await chatDoc.save();
+
+    const responsePayload = { reply, messageId: chatDoc.messages[chatDoc.messages.length - 1]._id };
+    if (process.env.LLM_DEBUG === 'true') {
+      // include provider and raw LLM response for debugging (controlled by env)
+      responsePayload.llm = { provider, raw: llmResult?.raw };
+    }
+
+    res.json(responsePayload);
   } catch (err) {
-    console.error("Chat error:", err.message);
-    res.status(500).json({ error: "Failed to process chat message." });
+    console.error("Chat error:", err);
+    res.status(500).json({ error: "Failed to process chat message.", detail: err.message });
   }
 };
 
-module.exports = { handleChat };
+/**
+ * Get chat history for the authenticated user
+ */
+const getChatHistory = async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Max 100 messages
+    const skip = parseInt(req.query.offset) || 0;
+    
+    const chat = await Chat.findOne({ user: req.user._id })
+      .select('messages updatedAt')
+      .slice('messages', [skip, limit]); // Get a slice of messages
+    
+    if (!chat) {
+      return res.json({ messages: [], total: 0 });
+    }
+    
+    // Get total count for pagination
+    const total = chat.messages.length;
+    
+    res.json({
+      messages: chat.messages,
+      total,
+      hasMore: total > (skip + limit)
+    });
+  } catch (err) {
+    console.error("Get history error:", err.message);
+    res.status(500).json({ error: "Failed to fetch chat history" });
+  }
+};
+
+module.exports = { handleChat, getChatHistory };

@@ -1,7 +1,7 @@
 const path = require("path");
 const extractText = require("../utils/extractPdf");
 const { evaluateCandidate } = require("./llmController");
-const pool = require("../utils/db");
+const Evaluation = require('../models/Evaluation');
 
 const handleUpload = async (req, res) => {
   try {
@@ -12,15 +12,60 @@ const handleUpload = async (req, res) => {
     const resumeText = await extractText(filePath);
 
     // Send to LLM for evaluation
-    const evaluation = await evaluateCandidate(resumeText, role);
+    const evalText = await evaluateCandidate(resumeText, role);
 
-    // Insert into DB
-    await pool.query(
-      "INSERT INTO candidates (name, email, resume_text, applied_role, evaluation) VALUES ($1, $2, $3, $4, $5)",
-      [name, email, resumeText, role, evaluation]
-    );
+    // Parse the evaluation response
+    const evalLines = evalText.split('\n');
+    const strengths = [];
+    const weaknesses = [];
+    let score = 0;
+    let comments = '';
 
-    res.json({ message: "Resume uploaded & evaluated ✅", evaluation: evaluation});
+    evalLines.forEach(line => {
+      if (line.startsWith('- Strengths:')) {
+        // Collect next 5 lines as strengths
+        for (let i = 1; i <= 5 && i < evalLines.length; i++) {
+          if (evalLines[i].trim().startsWith('-')) {
+            strengths.push(evalLines[i].trim().substring(2));
+          }
+        }
+      } else if (line.startsWith('- Weaknesses:')) {
+        // Collect next 5 lines as weaknesses
+        for (let i = 1; i <= 5 && i < evalLines.length; i++) {
+          if (evalLines[i].trim().startsWith('-')) {
+            weaknesses.push(evalLines[i].trim().substring(2));
+          }
+        }
+      } else if (line.startsWith('- Score:')) {
+        score = parseFloat(line.split(':')[1]) || 0;
+      } else if (line.startsWith('- Comments:')) {
+        comments = line.split(':')[1].trim();
+      }
+    });
+
+    // Create evaluation document
+    const evaluation = await Evaluation.create({
+      user: req.user._id,
+      resumeText,
+      appliedRole: role,
+      candidateName: name,
+      candidateEmail: email,
+      strengths,
+      weaknesses,
+      score,
+      comments,
+    });
+
+    res.json({ 
+      message: "Resume uploaded & evaluated ✅", 
+      evaluation: {
+        id: evaluation._id,
+        strengths,
+        weaknesses,
+        score,
+        comments
+      }
+    });
   } catch (err) {
     console.error("Upload error:", err);
     res.status(500).json({ error: "Failed to process resume" });

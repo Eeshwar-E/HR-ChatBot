@@ -1,7 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const { handleChat } = require("../controllers/chatController");
+const { handleChat, getChatHistory } = require("../controllers/chatController");
+const auth = require('../middleware/auth');
 
-router.post("/", handleChat);
+// Protected chat endpoints - require authentication
+router.post("/", auth, handleChat);
+router.get("/history", auth, getChatHistory);
 
 module.exports = router;
