@@ -1,52 +1,52 @@
 const path = require("path");
 const extractText = require("../utils/extractPdf");
-const { evaluateCandidate } = require("./llmController");
-const Evaluation = require('../models/Evaluation');
+const { evaluateCandidate } = require("../controllers/llmController");
+const Evaluation = require("../models/Evaluation");
 
 const handleUpload = async (req, res) => {
   try {
-    const { name, email, role } = req.body;
+    const { name, email, role, model } = req.body;
     const filePath = path.join(__dirname, "..", req.file.path);
 
-    // Extract resume text
-    const resumeText = await extractText(filePath);
+    // Extract PDF text
+    let resumeText = await extractText(filePath);
+    if (!resumeText || resumeText.length === 0) {
+      throw new Error("Resume text extraction failed.");
+    }
 
-    // Send to LLM for evaluation
-    const evalText = await evaluateCandidate(resumeText, role);
+    // Enforce Gemini input length limit for stability/speed
+    let safeResumeText = resumeText;
+    if (model === "gemini" && resumeText.length > 1800) {
+      safeResumeText = resumeText.slice(0, 1800);
+    }
 
-    // Parse the evaluation response
-    const evalLines = evalText.split('\n');
-    const strengths = [];
-    const weaknesses = [];
-    let score = 0;
-    let comments = '';
+    let evalResult;
+    try {
+      // Now returns a structured object with score, strengths, weaknesses, comments
+      evalResult = await evaluateCandidate(safeResumeText, role, model);
+    } catch (llmError) {
+      console.error("LLM error:", llmError);
+      return res.status(500).json({ error: "Resume analysis failed: " + (llmError.message || "Unknown LLM error") });
+    }
 
-    evalLines.forEach(line => {
-      if (line.startsWith('- Strengths:')) {
-        // Collect next 5 lines as strengths
-        for (let i = 1; i <= 5 && i < evalLines.length; i++) {
-          if (evalLines[i].trim().startsWith('-')) {
-            strengths.push(evalLines[i].trim().substring(2));
-          }
-        }
-      } else if (line.startsWith('- Weaknesses:')) {
-        // Collect next 5 lines as weaknesses
-        for (let i = 1; i <= 5 && i < evalLines.length; i++) {
-          if (evalLines[i].trim().startsWith('-')) {
-            weaknesses.push(evalLines[i].trim().substring(2));
-          }
-        }
-      } else if (line.startsWith('- Score:')) {
-        score = parseFloat(line.split(':')[1]) || 0;
-      } else if (line.startsWith('- Comments:')) {
-        comments = line.split(':')[1].trim();
-      }
-    });
+    // LOG output for debugging
+    console.log("LLM Evaluation Output:\n", evalResult);
 
-    // Create evaluation document
+    // Defensive: Ensure shape and keys
+    const { strengths = [], weaknesses = [], score = 0, comments = "" } = evalResult || {};
+
+    if (
+      (!Array.isArray(strengths) || strengths.length === 0) &&
+      (!Array.isArray(weaknesses) || weaknesses.length === 0) &&
+      !comments &&
+      !score
+    ) {
+      return res.status(500).json({ error: "Resume analysis failed: LLM did not return a valid result." });
+    }
+
     const evaluation = await Evaluation.create({
-      user: req.user._id,
-      resumeText,
+      user: req.user.id,
+      resumeText: safeResumeText,
       appliedRole: role,
       candidateName: name,
       candidateEmail: email,
@@ -56,18 +56,18 @@ const handleUpload = async (req, res) => {
       comments,
     });
 
-    res.json({ 
-      message: "Resume uploaded & evaluated ✅", 
+    res.json({
+      message: "Resume uploaded & evaluated",
       evaluation: {
-        id: evaluation._id,
+        id: evaluation.id,
         strengths,
         weaknesses,
         score,
-        comments
+        comments,
       }
     });
   } catch (err) {
-    console.error("Upload error:", err);
+    console.error("Upload error", err);
     res.status(500).json({ error: "Failed to process resume" });
   }
 };

@@ -2,37 +2,19 @@ const { chatWithLLM, getLLMRawResponse } = require('./llmController');
 const Chat = require('../models/Chat');
 const Evaluation = require('../models/Evaluation');
 
-/**
- * Builds a formatted chat transcript from history array
- * @param {Array} history - array of message objects { sender: 'user'|'bot', text: string }
- * @returns {string} formatted conversation for prompt
- */
 const buildTranscript = (history = []) => {
   return history
-    .map(msg =>
-      msg.sender === 'user'
-        ? `User: ${msg.text}`
-        : `Bot: ${msg.text}`
-    )
+    .map(msg => (msg.sender === 'user' ? `User: ${msg.text}` : `Bot: ${msg.text}`))
     .join('\n');
 };
 
-/**
- * Handles incoming chat requests from frontend
- * Combines resume evaluation and full multi-turn chat history
- * to build a context-aware prompt for the LLM.
- */
 const handleChat = async (req, res) => {
   try {
-    const { message, context } = req.body;
-
-    if (!message) {
-      return res.status(400).json({ error: "Message is required." });
-    }
+    const { message, context, model } = req.body;
+    if (!message) return res.status(400).json({ error: "Message is required." });
 
     const trimmedMsg = message.trim();
-    
-    // If we have an evaluation ID in context, fetch it
+
     let evaluation = null;
     if (context?.evaluationId) {
       evaluation = await Evaluation.findOne({ 
@@ -41,17 +23,16 @@ const handleChat = async (req, res) => {
       });
     }
 
-    // Get or create chat document for this user
-    const chatDoc = await Chat.findOne({ user: req.user._id }) || new Chat({ user: req.user._id });
-    
-    // Build transcript from stored messages
+    let chatDoc = await Chat.findOne({ user: req.user._id, model });
+    if (!chatDoc) {
+      chatDoc = new Chat({ user: req.user._id, model, messages: [] });
+    }
+
     const transcript = buildTranscript(chatDoc.messages);
 
-    // Construct prompt for LLM
     let prompt = '';
 
     if (evaluation) {
-      // Include evaluation and full transcript
       prompt =
         `You are an AI assistant. Below is your previous evaluation of a candidate's resume:\n"${evaluation.comments}"\n\n` +
         `Strengths: ${evaluation.strengths.join(', ')}\n` +
@@ -61,35 +42,27 @@ const handleChat = async (req, res) => {
         `Now, respond helpfully to the user's latest message:\n"${trimmedMsg}"\n\n` +
         `Bot:`;
     } else {
-      // No evaluation, use only transcript and user message
-      prompt =
-        `${transcript}\n\nUser: ${trimmedMsg}\n\nBot:`;
+      prompt = `${transcript}\n\nUser: ${trimmedMsg}\n\nBot:`;
     }
 
-  // Only log when debugging enabled to avoid exposing sensitive data
-  if (process.env.LLM_DEBUG === 'true') {
-    console.log("Prompt sent to LLM (truncated):\n", prompt.slice(0, 500));
-  }
+    if (process.env.LLM_DEBUG === 'true') {
+      console.log("Prompt sent to LLM (truncated):\n", prompt.slice(0, 500));
+    }
 
-  const provider = req.user?.modelPreference || process.env.LLM_PROVIDER || 'phi3';
-  // Get raw response so we can optionally return metadata when debugging
-  const llmResult = await getLLMRawResponse(prompt, provider);
-  const reply = llmResult?.text || '';
+    const provider = model || req.user?.modelPreference || process.env.LLMPROVIDER || "phi3";
+    const llmResult = await getLLMRawResponse(prompt, provider);
+    const reply = llmResult?.text || '';
 
-    // Add the new messages
     chatDoc.messages.push(
       { sender: 'user', text: trimmedMsg },
       { sender: 'bot', text: reply }
     );
-    
-    // Update the timestamp
     chatDoc.updatedAt = new Date();
-    
+
     await chatDoc.save();
 
     const responsePayload = { reply, messageId: chatDoc.messages[chatDoc.messages.length - 1]._id };
     if (process.env.LLM_DEBUG === 'true') {
-      // include provider and raw LLM response for debugging (controlled by env)
       responsePayload.llm = { provider, raw: llmResult?.raw };
     }
 
@@ -100,25 +73,24 @@ const handleChat = async (req, res) => {
   }
 };
 
-/**
- * Get chat history for the authenticated user
- */
 const getChatHistory = async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit) || 50, 100); // Max 100 messages
+    const { model } = req.query;
+    if (!model) return res.status(400).json({ error: "Model parameter required." });
+
+    const limit = Math.min(parseInt(req.query.limit) || 50, 100);
     const skip = parseInt(req.query.offset) || 0;
-    
-    const chat = await Chat.findOne({ user: req.user._id })
+
+    const chat = await Chat.findOne({ user: req.user._id, model })
       .select('messages updatedAt')
-      .slice('messages', [skip, limit]); // Get a slice of messages
-    
+      .slice('messages', [skip, limit]);
+
     if (!chat) {
       return res.json({ messages: [], total: 0 });
     }
-    
-    // Get total count for pagination
+
     const total = chat.messages.length;
-    
+
     res.json({
       messages: chat.messages,
       total,

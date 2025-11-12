@@ -8,8 +8,11 @@ const messageSchema = new Schema({
 
 const chatSchema = new Schema({
   user: { type: Types.ObjectId, ref: 'User', required: true, index: true },
+  model: { type: String, required: true },
   messages: { type: [messageSchema], default: [] },
   updatedAt: { type: Date, default: Date.now },
 });
+
+chatSchema.index({ user: 1, model: 1 }, { unique: true });
 
 module.exports = model('Chat', chatSchema);
