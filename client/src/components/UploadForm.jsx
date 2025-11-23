@@ -1,170 +1,162 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState } from "react";
+import axios from "axios";
 
-
-const UploadForm = ({ onResponse, setLoading, theme }) => {
-  const darkTextColor = '#23272f';
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState('');
+const UploadForm = ({ onResponse, setLoading, model, token }) => {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
   const [resume, setResume] = useState(null);
 
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
-
-
     const formData = new FormData();
-    formData.append('name', name);
-    formData.append('email', email);
-    formData.append('role', role);
-    formData.append('resume', resume);
-
+    formData.append("name", name);
+    formData.append("email", email);
+    formData.append("role", role);
+    formData.append("resume", resume);
+    formData.append("model", model);
 
     try {
-      setLoading(true); // ✅ Start the loading bar
-      const res = await axios.post('http://localhost:5000/upload', formData);
-      onResponse(res.data);
+      setLoading(true);
+      const res = await axios.post("http://localhost:5000/upload", formData, {
+        headers: {
+          Authorization: "Bearer " + token
+        }
+      });
+      onResponse(res.data, resume);
     } catch (err) {
-      const error = err.response?.data?.error || 'Upload failed';
-      onResponse({ error });
+      onResponse(err.response?.data?.error || "Upload failed", resume);
     } finally {
-      setLoading(false); // ✅ Stop the loading bar
+      setLoading(false);
     }
   };
 
-
   return (
-    <form
-      onSubmit={handleSubmit}
+    <div
       style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '17px',
-        padding: '0 8px'
+        maxWidth: 440,
+        width: "100%",
+        margin: "38px auto 0 auto",
+        background: "linear-gradient(121deg, #e9f2fc 0%, #f9f9fa 100%)",
+        borderRadius: 20,
+        boxShadow: "0 2.5px 18px 0 #a0bee944",
+        padding: "30px 32px 28px 32px"
       }}
     >
-      <fieldset
+      <h2 style={{
+        textAlign: "center",
+        fontSize: 25,
+        color: "#255476",
+        fontWeight: 700,
+        marginBottom: 20,
+        letterSpacing: ".03em"
+      }}>
+        Candidate Details
+      </h2>
+      <form
+        onSubmit={handleSubmit}
         style={{
-          border: 'none',
-          padding: 0,
-          margin: 0,
-          background: 'none'
+          display: "flex",
+          flexDirection: "column",
+          gap: 17
         }}
       >
-        <legend style={{ fontWeight: 600, marginBottom: 4, fontSize: '1rem', color: theme === 'dark' ? darkTextColor : '#222' }}>
-          Candidate Details
-        </legend>
-
-
-        <label style={{ fontSize: 15, marginBottom: 2, color: theme === 'dark' ? darkTextColor : '#444' }}>
-          Name:
-          <input
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            required
-            style={{
-              width: '100%',
-              marginTop: 3,
-              marginBottom: 7,
-              padding: '10px',
-              fontSize: '15px',
-              border: '1px solid #beccd6',
-              borderRadius: '7px',
-            }}
-          />
-        </label>
-
-
-        <label style={{ fontSize: 15, marginBottom: 2, color: theme === 'dark' ? darkTextColor : '#444' }}>
-          Email:
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-            style={{
-              width: '100%',
-              marginTop: 3,
-              marginBottom: 7,
-              padding: '10px',
-              fontSize: '15px',
-              border: '1px solid #beccd6',
-              borderRadius: '7px',
-            }}
-          />
-        </label>
-
-
-        <label style={{ fontSize: 15, marginBottom: 2, color: theme === 'dark' ? darkTextColor : '#444' }}>
-          Role:
-          <input
-            type="text"
-            value={role}
-            onChange={e => setRole(e.target.value)}
-            required
-            style={{
-              width: '100%',
-              marginTop: 3,
-              marginBottom: 7,
-              padding: '10px',
-              fontSize: '15px',
-              border: '1px solid #beccd6',
-              borderRadius: '7px',
-            }}
-          />
-        </label>
-
-
-        <label style={{ fontSize: 15, color: theme === 'dark' ? darkTextColor : '#444', marginBottom: 2 }}>
-          Resume (PDF):
+        <fieldset
+          style={{
+            border: "none",
+            padding: 0,
+            margin: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 12
+          }}
+        >
+          <label style={{ color: "#324869", fontWeight: 500 }}>
+            Name
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              required
+              style={{
+                width: "100%",
+                padding: "7px 11px",
+                borderRadius: 7,
+                border: "1.4px solid #b2c5e5",
+                marginTop: 3,
+                fontSize: "1rem"
+              }}
+            />
+          </label>
+          <label style={{ color: "#324869", fontWeight: 500 }}>
+            Email
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              style={{
+                width: "100%",
+                padding: "7px 11px",
+                borderRadius: 7,
+                border: "1.4px solid #b2c5e5",
+                marginTop: 3,
+                fontSize: "1rem"
+              }}
+            />
+          </label>
+          <label style={{ color: "#324869", fontWeight: 500 }}>
+            Role
+            <input
+              type="text"
+              value={role}
+              onChange={e => setRole(e.target.value)}
+              required
+              style={{
+                width: "100%",
+                padding: "7px 11px",
+                borderRadius: 7,
+                border: "1.4px solid #b2c5e5",
+                marginTop: 3,
+                fontSize: "1rem"
+              }}
+            />
+          </label>
+          <label style={{ color: "#324869", fontWeight: 500 }}>
+            Resume (PDF)
             <input
               type="file"
+              id="resume-upload-field"
               accept=".pdf"
               onChange={e => setResume(e.target.files[0])}
               required
               style={{
-                marginTop: 2,
-                marginBottom: 10,
-                fontSize: 15,
-                color: theme === 'dark' ? '#fff' : '#222',
-                background: theme === 'dark' ? '#23272f' : '#fff',
-                border: 'none',
-                padding: '6px 0',
-                // Hide default file input text in dark mode
-                filter: theme === 'dark' ? 'invert(1) grayscale(1)' : 'none',
-                width: 'auto',
-                maxWidth: '100%',
+                marginTop: 3
               }}
             />
-        </label>
-
-
+          </label>
+        </fieldset>
         <button
           type="submit"
           style={{
-            marginTop: '14px',
-            padding: '11px 0',
-            width: '130px',
-            alignSelf: 'flex-end',
-            background: 'linear-gradient(90deg, #56CCF2 0%, #2F80ED 100%)',
-            color: '#fff',
+            marginTop: 12,
+            padding: "9px 0",
+            borderRadius: 9,
+            background: "linear-gradient(94deg, #637cff 40%, #489ad9 90%)",
+            color: "white",
             fontWeight: 600,
-            fontSize: '16px',
-            border: 'none',
-            borderRadius: '7px',
-            boxShadow: '0 2px 8px rgba(44, 62, 80, 0.05)',
-            cursor: 'pointer',
-            transition: 'background 0.2s',
+            fontSize: "1.05rem",
+            border: "none",
+            letterSpacing: ".01em",
+            boxShadow: "0 2px 9px #bcdcff55",
+            cursor: "pointer"
           }}
         >
           Submit
         </button>
-      </fieldset>
-    </form>
+      </form>
+    </div>
   );
 };
-
 
 export default UploadForm;
