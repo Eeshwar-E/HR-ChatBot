@@ -1,6 +1,6 @@
 ## CHATBOT Project
 
-This project is an AI-powered **Resume Evaluator** system. It allows users to upload resumes and receive automated evaluations using the Gemini API. The system is built with a Node.js/Express backend, PostgreSQL database, and a React frontend (with two client variants).
+This project is an AI-powered **Resume Evaluator** system. It allows users to upload resumes and receive automated evaluations using the Gemini API. The system is built with a Node.js/Express backend, PostgreSQL database, and a React frontend.
 
 ### Main Functionalities
 
