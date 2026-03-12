@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import API_BASE_URL from "../config/apiConfig";
 
 const UploadForm = ({ onResponse, setLoading, model, token }) => {
   const [name, setName] = useState("");
@@ -18,7 +19,7 @@ const UploadForm = ({ onResponse, setLoading, model, token }) => {
 
     try {
       setLoading(true);
-      const res = await axios.post("http://localhost:5000/upload", formData, {
+      const res = await axios.post(`${API_BASE_URL}/upload`, formData, {
         headers: {
           Authorization: "Bearer " + token
         }

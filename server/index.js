@@ -10,6 +10,13 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const axios = require('axios');
 
+// CORS Configuration
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
 // Add this debug route
 app.get('/debug', (req, res) => {
   res.json({ 
@@ -21,7 +28,7 @@ app.get('/debug', (req, res) => {
   });
 });
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
 
 // Mount routes

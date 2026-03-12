@@ -1,5 +1,7 @@
+import API_BASE_URL from "../config/apiConfig";
+
 export const sendMessageToChatbot = async (message, context, token) => {
-  const response = await fetch('http://localhost:5000/chat', {
+  const response = await fetch(`${API_BASE_URL}/chat`, {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json',

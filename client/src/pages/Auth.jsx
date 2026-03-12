@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import API_BASE_URL from "../config/apiConfig";
 
 const Auth = ({ setUser, setToken }) => {
   const [activeTab, setActiveTab] = useState("login");
@@ -18,7 +19,7 @@ const Auth = ({ setUser, setToken }) => {
     setError("");
     setInfo("");
     try {
-      const res = await axios.post("http://localhost:5000/auth/login", {
+      const res = await axios.post(`${API_BASE_URL}/auth/login`, {
         email: loginEmail,
         password: loginPassword
       });
@@ -36,7 +37,7 @@ const Auth = ({ setUser, setToken }) => {
     setError("");
     setInfo("");
     try {
-      const res = await axios.post("http://localhost:5000/auth/register", {
+      const res = await axios.post(`${API_BASE_URL}/auth/register`, {
         email: signupEmail,
         password: signupPassword,
       });
@@ -54,7 +55,7 @@ const Auth = ({ setUser, setToken }) => {
     setError("");
     setInfo("");
     try {
-      const res = await axios.post("http://localhost:5000/auth/forgot", { email: forgotEmail });
+      const res = await axios.post(`${API_BASE_URL}/auth/forgot`, { email: forgotEmail });
       setInfo(res.data.message + (res.data.token ? ` (token: ${res.data.token})` : ''));
     } catch (err) {
       setError(err.response?.data?.error || "Request failed");
@@ -66,7 +67,7 @@ const Auth = ({ setUser, setToken }) => {
     setError("");
     setInfo("");
     try {
-      const res = await axios.post("http://localhost:5000/auth/reset", { token: resetToken, newPassword: resetPassword });
+      const res = await axios.post(`${API_BASE_URL}/auth/reset`, { token: resetToken, newPassword: resetPassword });
       setInfo(res.data.message);
     } catch (err) {
       setError(err.response?.data?.error || "Reset failed");
