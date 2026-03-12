@@ -1,7 +1,0 @@
-Backend:
-- login/signup issues fixing  (Done)
-
-Frontend:
-- colours
-- adjustments
-- resume evaluator : movement of chat to left and view pdf on the right
