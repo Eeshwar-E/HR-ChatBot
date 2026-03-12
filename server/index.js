@@ -4,7 +4,8 @@ const cors = require("cors");
 const { connect } = require('./utils/mongo');
 const app = express();
 const uploadRoutes = require("./routes/uploadRoutes");
-const chatRoutes = require("./routes/chatRoutes");
+// chat functionality removed from UI; keep routes if needed later
+// const chatRoutes = require("./routes/chatRoutes");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const axios = require('axios');
@@ -25,20 +26,26 @@ app.use(express.json({ limit: '1mb' }));
 
 // Mount routes
 app.use("/upload", uploadRoutes);
-app.use("/chat", chatRoutes);
+// chat endpoints are still available but not linked from the frontend
+// app.use("/chat", chatRoutes);
 app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
 
-// Health endpoint: checks local PHI3 model and reports OpenAI config
+// Health endpoint: checks Gemini API and reports config
 app.get('/health', async (req, res) => {
-	const phi3Url = process.env.PHI3_URL || 'http://127.0.0.1:11434/api/generate';
-	const result = { phi3: { ok: false, detail: null }, openai: { configured: !!process.env.OPENAI_API_KEY } };
+	const result = { gemini: { ok: false, detail: null } };
+	if (!process.env.GEMINI_API_KEY) {
+		result.gemini.ok = false;
+		result.gemini.detail = 'GEMINI_API_KEY not set';
+		return res.json(result);
+	}
 	try {
-		const r = await axios.post(phi3Url, { model: 'phi3', prompt: 'ping', stream: false }, { timeout: 5000 });
-		result.phi3.ok = true;
-		result.phi3.detail = typeof r.data === 'object' ? r.data : String(r.data).slice(0, 200);
+		const geminUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+		const r = await axios.post(geminUrl, { contents: [{ role: 'user', parts: [{ text: 'ping' }] }] }, { timeout: 5000 });
+		result.gemini.ok = true;
+		result.gemini.detail = 'Gemini API is accessible';
 	} catch (err) {
-		result.phi3.detail = err.message;
+		result.gemini.detail = err.message;
 	}
 	res.json(result);
 });

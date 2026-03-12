@@ -1,9 +1,7 @@
 import React, { useState } from "react";
 import UploadForm from "../components/UploadForm";
-import ModelSelector from "../components/ModelSelector";
 
 const ResumeEvaluator = ({ token }) => {
-  const [model, setModel] = useState("phi3");
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
   const [resumeFile, setResumeFile] = useState(null); // store actual file for preview
@@ -49,12 +47,11 @@ const ResumeEvaluator = ({ token }) => {
         }}>
           Resume Evaluator
         </h2>
-        <ModelSelector model={model} setModel={setModel} />
-        {/* Pass setResumeFile to UploadForm to get local PDF */}
+        {/* Pass Gemini as the model to UploadForm */}
         <UploadForm
           onResponse={(data, fileObj) => handleFormResponse(data, fileObj)}
           setLoading={setLoading}
-          model={model}
+          model="gemini"
           token={token}
         />
         

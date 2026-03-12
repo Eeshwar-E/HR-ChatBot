@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { BrowserRouter as Router, Route, Routes, Navigate, useNavigate } from "react-router-dom";
 import ResumeEvaluator from "./pages/ResumeEvaluator";
-import ChatPage from "./pages/ChatPage";
 import Auth from "./pages/Auth";
 
 // Navbar component
@@ -33,20 +32,6 @@ const NavBar = ({ token, onLogout }) => {
       }}
     >
       <div style={{ display: "flex", gap: 24 }}>
-        <Link
-          to="/chat"
-          style={{
-            fontWeight: 700,
-            color: "#2a5282",
-            textDecoration: "none",
-            padding: "7px 18px",
-            borderRadius: 7,
-            background: isActive("/chat") ? "#d7e8ff" : "transparent",
-            transition: "background .16s"
-          }}
-        >
-          Chat with Model
-        </Link>
         <Link
           to="/evaluator"
           style={{
@@ -107,36 +92,11 @@ const AppContent = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
-  // State for chat histories keyed by model
-  const [chatHistories, setChatHistories] = useState(() => {
-    try {
-      const saved = localStorage.getItem("chatHistories");
-      return saved ? JSON.parse(saved) : { gemini: [], phi3: [] };
-    } catch {
-      return { gemini: [], phi3: [] };
-    }
-  });
-
-  const [currentModel, setCurrentModel] = useState("gemini");
-
-  // Persist chat histories to localStorage on change
-  useEffect(() => {
-    localStorage.setItem("chatHistories", JSON.stringify(chatHistories));
-  }, [chatHistories]);
-
   const handleLogout = () => {
     setToken("");
     setUser(null);
     localStorage.removeItem("jwt");
     navigate("/auth");
-  };
-
-  // Handler to add message for given model
-  const addMessage = (model, message) => {
-    setChatHistories(prev => ({
-      ...prev,
-      [model]: [...(prev[model] || []), message]
-    }));
   };
 
   // Only protected pages/routes after login
@@ -153,16 +113,7 @@ const AppContent = () => {
       <NavBar token={token} onLogout={handleLogout} />
       <Routes>
         <Route path="/evaluator" element={<ResumeEvaluator token={token} />} />
-        <Route path="/chat" element={
-          <ChatPage 
-            token={token} 
-            chatHistories={chatHistories} 
-            addMessage={addMessage} 
-            currentModel={currentModel} 
-            setCurrentModel={setCurrentModel} 
-          />} 
-        />
-        <Route path="*" element={<Navigate to="/chat" />} />
+        <Route path="*" element={<Navigate to="/evaluator" />} />
       </Routes>
     </>
   );

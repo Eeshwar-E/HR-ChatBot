@@ -49,8 +49,8 @@ const handleChat = async (req, res) => {
       console.log("Prompt sent to LLM (truncated):\n", prompt.slice(0, 500));
     }
 
-    const provider = model || req.user?.modelPreference || process.env.LLMPROVIDER || "phi3";
-    const llmResult = await getLLMRawResponse(prompt, provider);
+    // Use Gemini for all chat
+    const llmResult = await getLLMRawResponse(prompt);
     const reply = llmResult?.text || '';
 
     chatDoc.messages.push(

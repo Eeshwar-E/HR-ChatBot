@@ -6,7 +6,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Call Gemini API (Google)
 const callGemini = async (prompt) => {
   if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not set.");
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
   try {
     const response = await axios.post(
       url,
@@ -37,42 +37,20 @@ const callGemini = async (prompt) => {
   }
 };
 
-
-// Call local phi3 Ollama API
-const callPhi3 = async (prompt) => {
-  const url = process.env.PHI3URL || "http://127.0.0.1:11434/api/generate";
-  try {
-    const response = await axios.post(url, {
-      model: "phi3",
-      prompt,
-      stream: false,
-    }, { timeout: 60000 });
-    const text = response.data.response || response.data?.output?.[0]?.content || "";
-    return { text, raw: response.data };
-  } catch (err) {
-    console.error("Phi3 Request Error:", err?.response?.data || err.message || err);
-    throw new Error(
-      err?.response?.data?.error?.message ||
-      "Failed to process chat message with Phi3."
-    );
-  }
-};
-
-// Get raw response from the selected LLM provider
-const getLLMRawResponse = async (prompt, provider) => {
-  if (provider === "gemini") return await callGemini(prompt);
-  return await callPhi3(prompt);
+// Get raw response from Gemini
+const getLLMRawResponse = async (prompt) => {
+  return await callGemini(prompt);
 };
 
 // Convenience wrapper for just the text reply
-const getLLMResponseText = async (prompt, provider) => {
-  const { text } = await getLLMRawResponse(prompt, provider);
+const getLLMResponseText = async (prompt) => {
+  const { text } = await getLLMRawResponse(prompt);
   return text;
 };
 
-// Chat with the selected LLM (text only)
-const chatWithLLM = async (prompt, provider) => {
-  return await getLLMResponseText(prompt, provider);
+// Chat with Gemini (text only)
+const chatWithLLM = async (prompt) => {
+  return await getLLMResponseText(prompt);
 };
 
 // --- Universal resume result parser ---
@@ -131,8 +109,8 @@ function parseLLMSections(text) {
 
 
 
-// Resume evaluation (called by UploadController)
-const evaluateCandidate = async (resumeText, role, provider = "phi3") => {
+// Resume evaluation using Gemini
+const evaluateCandidate = async (resumeText, role) => {
   // Do NOT change your prompt
   const prompt = `You are an HR system. Evaluate the following resume for the job role of "${role}".
 Provide each section with a clear heading as shown. (follow only this format for resume evaluation and carefully proofread your output for spelling, typos, or accidental random characters. Do not include any broken words or stray letters.)
@@ -154,7 +132,7 @@ Comments:
 
 Resume:
 ${resumeText}`;
-  const resp = await getLLMRawResponse(prompt, provider);
+  const resp = await getLLMRawResponse(prompt);
   const replyText = resp.text || resp; // handle both object and string
   return parseLLMSections(replyText); // always returns { strengths, weaknesses, score, comments }
 };

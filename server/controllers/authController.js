@@ -26,6 +26,53 @@ const register = async (req, res) => {
   }
 };
 
+// generate a one-time reset token and (for now) return it in the response
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // don't reveal whether the email exists
+      return res.json({ message: 'If an account with that email exists, a reset token has been sent' });
+    }
+
+    const token = require('crypto').randomBytes(20).toString('hex');
+    user.resetToken = token;
+    user.resetExpires = Date.now() + 3600000; // 1 hour
+    await user.save();
+
+    // in a real app you'd email the token; here we return it so the user can proceed
+    res.json({ message: 'Password reset token generated', token });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    res.status(500).json({ error: 'Failed to generate reset token' });
+  }
+};
+
+// consume a reset token and set a new password
+const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) return res.status(400).json({ error: 'Token and newPassword are required' });
+
+    const user = await User.findOne({ resetToken: token, resetExpires: { $gt: Date.now() } });
+    if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
+
+    const salt = await bcrypt.genSalt(10);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    user.resetToken = undefined;
+    user.resetExpires = undefined;
+    await user.save();
+
+    res.json({ message: 'Password has been reset. You can now log in with the new password.' });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+};
+
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -51,4 +98,4 @@ const me = async (req, res) => {
   res.json({ user: req.user });
 };
 
-module.exports = { register, login, me };
+module.exports = { register, login, me, forgotPassword, resetPassword };

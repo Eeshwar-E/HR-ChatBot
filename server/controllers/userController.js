@@ -11,8 +11,8 @@ const updatePreferences = async (req, res) => {
       return res.status(400).json({ error: 'Model preference is required' });
     }
 
-    if (!['phi3', 'openai'].includes(modelPreference)) {
-      return res.status(400).json({ error: 'Invalid model preference. Must be either "phi3" or "openai"' });
+    if (!['gemini'].includes(modelPreference)) {
+      return res.status(400).json({ error: 'Invalid model preference. Must be "gemini"' });
     }
 
     // Update user preferences

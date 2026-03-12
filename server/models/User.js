@@ -3,8 +3,11 @@ const { Schema, model } = require('mongoose');
 const userSchema = new Schema({
   email: { type: String, required: true, unique: true, index: true },
   passwordHash: { type: String, required: true },
-  // Model preference: 'phi3' (local model) or 'openai'
-  modelPreference: { type: String, enum: ['phi3', 'openai'], default: process.env.LLM_PROVIDER || 'phi3' },
+  // Model preference: Gemini is the only supported model
+  modelPreference: { type: String, enum: ['gemini'], default: process.env.LLM_PROVIDER || 'gemini' },
+  // for password reset flow
+  resetToken: { type: String },
+  resetExpires: { type: Date },
   createdAt: { type: Date, default: Date.now },
 });
 

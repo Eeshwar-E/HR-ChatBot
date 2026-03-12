@@ -7,11 +7,16 @@ const Auth = ({ setUser, setToken }) => {
   const [loginPassword, setLoginPassword] = useState("");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setInfo("");
     try {
       const res = await axios.post("http://localhost:5000/auth/login", {
         email: loginEmail,
@@ -29,6 +34,7 @@ const Auth = ({ setUser, setToken }) => {
   const handleSignup = async (e) => {
     e.preventDefault();
     setError("");
+    setInfo("");
     try {
       const res = await axios.post("http://localhost:5000/auth/register", {
         email: signupEmail,
@@ -40,6 +46,30 @@ const Auth = ({ setUser, setToken }) => {
       localStorage.setItem("jwt", token);
     } catch (err) {
       setError(err.response?.data?.error || "Signup failed");
+    }
+  };
+
+  const handleForgot = async (e) => {
+    e.preventDefault();
+    setError("");
+    setInfo("");
+    try {
+      const res = await axios.post("http://localhost:5000/auth/forgot", { email: forgotEmail });
+      setInfo(res.data.message + (res.data.token ? ` (token: ${res.data.token})` : ''));
+    } catch (err) {
+      setError(err.response?.data?.error || "Request failed");
+    }
+  };
+
+  const handleReset = async (e) => {
+    e.preventDefault();
+    setError("");
+    setInfo("");
+    try {
+      const res = await axios.post("http://localhost:5000/auth/reset", { token: resetToken, newPassword: resetPassword });
+      setInfo(res.data.message);
+    } catch (err) {
+      setError(err.response?.data?.error || "Reset failed");
     }
   };
 
@@ -70,12 +100,37 @@ const Auth = ({ setUser, setToken }) => {
         >
           Signup
         </button>
+        <button
+          onClick={() => setActiveTab("forgot")}
+          style={{
+            flex: 1,
+            padding: "12px 6px",
+            background: activeTab === "forgot" ? "#e6efff" : "transparent",
+            border: "none",
+            fontWeight: activeTab === "forgot" ? 600 : 400
+          }}
+        >
+          Forgot
+        </button>
+        <button
+          onClick={() => setActiveTab("reset")}
+          style={{
+            flex: 1,
+            padding: "12px 6px",
+            background: activeTab === "reset" ? "#e6efff" : "transparent",
+            border: "none",
+            fontWeight: activeTab === "reset" ? 600 : 400
+          }}
+        >
+          Reset
+        </button>
       </div>
       {activeTab === "login" && (
         <form onSubmit={handleLogin}>
           <input value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="Email" required style={{ width: "100%", margin: "10px 0", padding: 8 }} />
           <input value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="Password" type="password" required style={{ width: "100%", margin: "10px 0", padding: 8 }} />
           {error && <div style={{ color: "red", marginBottom: 10 }}>{error}</div>}
+          {info && <div style={{ color: "green", marginBottom: 10 }}>{info}</div>}
           <button type="submit" style={{ width: "100%", padding: 10 }}>Login</button>
         </form>
       )}
@@ -84,7 +139,25 @@ const Auth = ({ setUser, setToken }) => {
           <input value={signupEmail} onChange={e => setSignupEmail(e.target.value)} placeholder="Email" required style={{ width: "100%", margin: "10px 0", padding: 8 }} />
           <input value={signupPassword} onChange={e => setSignupPassword(e.target.value)} placeholder="Password" type="password" required style={{ width: "100%", margin: "10px 0", padding: 8 }} />
           {error && <div style={{ color: "red", marginBottom: 10 }}>{error}</div>}
+          {info && <div style={{ color: "green", marginBottom: 10 }}>{info}</div>}
           <button type="submit" style={{ width: "100%", padding: 10 }}>Signup</button>
+        </form>
+      )}
+      {activeTab === "forgot" && (
+        <form onSubmit={handleForgot}>
+          <input value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder="Email" required style={{ width: "100%", margin: "10px 0", padding: 8 }} />
+          {error && <div style={{ color: "red", marginBottom: 10 }}>{error}</div>}
+          {info && <div style={{ color: "green", marginBottom: 10 }}>{info}</div>}
+          <button type="submit" style={{ width: "100%", padding: 10 }}>Request Reset</button>
+        </form>
+      )}
+      {activeTab === "reset" && (
+        <form onSubmit={handleReset}>
+          <input value={resetToken} onChange={e => setResetToken(e.target.value)} placeholder="Reset Token" required style={{ width: "100%", margin: "10px 0", padding: 8 }} />
+          <input value={resetPassword} onChange={e => setResetPassword(e.target.value)} placeholder="New Password" type="password" required style={{ width: "100%", margin: "10px 0", padding: 8 }} />
+          {error && <div style={{ color: "red", marginBottom: 10 }}>{error}</div>}
+          {info && <div style={{ color: "green", marginBottom: 10 }}>{info}</div>}
+          <button type="submit" style={{ width: "100%", padding: 10 }}>Reset Password</button>
         </form>
       )}
     </div>
